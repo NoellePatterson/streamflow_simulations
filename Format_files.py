@@ -9,10 +9,14 @@ import shutil
 # for file in port_dnld:
 #     shutil.copy(file, 'data/portuguese/total_portuguese')
 
-spn_man = glob.glob('data/spanish/manual_download_spanish/*/*.pdf')
-for file in spn_man:
-    shutil.copy(file, 'data/spanish/total_spanish')
+# spn_man = glob.glob('data/spanish/manual_download_spanish/*/*.pdf')
+# for file in spn_man:
+#     shutil.copy(file, 'data/spanish/total_spanish')
 
-span_dnld = glob.glob('data/spanish/Spanish.Data/PDF/*/*.pdf')
-for file in span_dnld:
-    shutil.copy(file, 'data/spanish/total_spanish')
+# span_dnld = glob.glob('data/spanish/Spanish.Data/PDF/*/*.pdf')
+# for file in span_dnld:
+#     shutil.copy(file, 'data/spanish/total_spanish')
+
+ffc = glob.glob('data/ffc/*/*')   
+for file in ffc:
+    shutil.copy(file, 'data/ffc/all_gages')
