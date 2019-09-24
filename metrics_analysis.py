@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import csv
 from scipy.stats import ranksums
+import matplotlib.pyplot as plt
 
 class Gage:
     '''
@@ -85,8 +86,15 @@ def tabulate_wilcox():
                 summary_dict[value].append(0)
     for metric in summary_dict.keys():
         summary_dict[metric] = sum(summary_dict[metric])
-    df = pd.DataFrame.from_dict(summary_dict, orient='index')
-    df.to_csv('data/wilcoxon_summary.csv', header = ['Wilcoxon_significance_frequency'])
+    df = pd.DataFrame.from_dict(summary_dict, orient='index',columns = ['wilcox_fre'])
+    df = df.drop(['SP_Tim','DS_Tim','DS_Dur_WSI','DS_No_Flow','FA_Tim','Wet_Tim','Peak_Tim_2_Water','Peak_Tim_5_Water','Peak_Tim_10','Peak_Tim_20','Peak_Tim_50','Peak_Tim_10_Water','Peak_Tim_20_Water','Peak_Tim_50_Water'])
+    ax = df.plot.bar(figsize=(10, 7), legend=True, fontsize=10)
+    plt.margins(0.2)
+    plt.subplots_adjust(bottom=0.2)
+    L=plt.legend()
+    L.get_texts()[0].set_text('Wilcoxon significance frequency')
+    plt.show()
+    df.to_csv('data/wilcoxon_summary.csv')
     return summary_dict
 
 # files = glob.glob('data/ffc_metrics/*')
