@@ -68,7 +68,27 @@ def define_objects(files):
         name = file.split('/')[2][:-4]
         current_gage = Gage(name, metrics_file)
         current_gage.wilcox_vals(metrics_file)
-        import pdb; pdb.set_trace()
 
-files = glob.glob('data/ffc_metrics/*')
-result = define_objects(files)
+def tabulate_wilcox():
+    summary_dict = {}
+    wilcox_files = glob.glob('data/stat_analysis_2/*')
+    for index, file in enumerate(wilcox_files):
+        wilcox = pd.read_csv(file, sep=',', index_col = None)
+        # Create empty list to fill up for each metric in file, only do this once
+        if index == 0:
+            for i, value in enumerate(wilcox['Metric']):
+                summary_dict[value] = []
+        for i, value in enumerate(wilcox['Metric']):
+            if wilcox['p-val'][i] <= 0.05:
+                summary_dict[value].append(1)
+            else:
+                summary_dict[value].append(0)
+    for metric in summary_dict.keys():
+        summary_dict[metric] = sum(summary_dict[metric])
+    df = pd.DataFrame.from_dict(summary_dict, orient='index')
+    df.to_csv('data/wilcoxon_summary.csv', header = ['Wilcoxon_significance_frequency'])
+    return summary_dict
+
+# files = glob.glob('data/ffc_metrics/*')
+# result = define_objects(files)
+summary_dict = tabulate_wilcox()
