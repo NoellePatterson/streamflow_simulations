@@ -32,18 +32,24 @@ class Gage:
         fut_mean = []
         wilcoxon_stat = []
         p_val = []
+
+        wd = os.getcwd()
         try:
-            os.mkdir('data/vioplot/{}'.format(self.name))
+            os.mkdir(wd+'/data/vioplot/{}'.format(self.name))
+            os.mkdir(wd+'/data/vioplot/{}/viodata'.format(self.name))
         except:
             print('folder already exists')
-
         for row in metrics_file.index:
             gage.append(self.name)
             hyd_class.append(self.hyd_class)
             vals = metrics_file.iloc[row]
             # historic range is from index #1 to index # 56 (1950-2005)
             # future range is from index #71 to index # 151 (2020-2099)
-            metric_name = metrics_file.iloc[row][0]
+            metric_name = metrics_file.iloc[row][0]            
+            drop_metrics =['SP_Tim','DS_Tim','DS_Dur_WSI','DS_No_Flow','FA_Tim','Wet_Tim','Peak_Tim_2_Water','Peak_Tim_5_Water','Peak_Tim_10','Peak_Tim_20','Peak_Tim_50','Peak_Tim_10_Water','Peak_Tim_20_Water','Peak_Tim_50_Water']
+            if metric_name in drop_metrics:
+                continue
+
             metric.append(vals[0])
             hist_vals = vals.iloc[1:57]
             hist_vals = hist_vals.to_numpy()
@@ -70,15 +76,16 @@ class Gage:
             self.fut_vals = fut_vals
 
             vals_df = pd.DataFrame({'hist':pd.Series(self.hist_vals), 'fut':pd.Series(self.fut_vals)})
-            vals_df.to_csv('data/vioplot/{}/{}.csv'.format(self.name, metric_name, index= None, header=True, encoding ='utf-8'))
+            vals_df = vals_df[['hist', 'fut']]
+            vals_df.to_csv(wd+'/data/vioplot/{}/viodata/{}.csv'.format(self.name, metric_name, index=False))
             
             statistic, p_value = ranksums(hist_vals, fut_vals)
             wilcoxon_stat.append(statistic)
             p_val.append(p_value)
             cols = ['Gage','Class','Metric', 'Hist_mean', 'Fut_mean', 'Wilcoxon_stat','p-val']
             df = pd.DataFrame(list(zip(gage, hyd_class, metric, hist_mean, fut_mean, wilcoxon_stat, p_val)),columns = cols)
-
-            # df.to_csv('data/stat_analysis/{}.csv'.format(self.name), index=None)
+            if self.name in matched_gages:
+                df.to_csv(wd+'/data/stat_analysis_2/{}.csv'.format(self.name), index=None)
             self.wilcox = df
 
     def violins(self):
@@ -114,19 +121,16 @@ def tabulate_wilcox():
                 summary_dict[metric]['neg'] = []
         for i, metric in enumerate(wilcox['Metric']):
             if wilcox['p-val'][i] < 0.05 and wilcox['Wilcoxon_stat'][i] > 0:
-                summary_dict[metric]['neg'].append(1)
-            elif wilcox['p-val'][i] < 0.05 and wilcox['Wilcoxon_stat'][i] < 0:
                 summary_dict[metric]['pos'].append(1)
-
-    for metric in summary_dict.keys():
-        summary_dict[metric]['pos'] = sum(summary_dict[metric]['pos'])/13*100
-        summary_dict[metric]['neg'] = sum(summary_dict[metric]['neg'])/13*100
+            elif wilcox['p-val'][i] < 0.05 and wilcox['Wilcoxon_stat'][i] < 0:
+                summary_dict[metric]['neg'].append(1)
 
     df = pd.DataFrame.from_dict(summary_dict, orient='index')
+    for i, metric in enumerate(wilcox['Metric']):
+        df['pos'][metric] = sum(df['pos'][metric])/float(13)*100
+        df['neg'][metric] = sum(df['neg'][metric])/float(13)*100
 
-    df = df.drop(['SP_Tim','DS_Tim','DS_Dur_WSI','DS_No_Flow','FA_Tim','Wet_Tim','Peak_Tim_2_Water','Peak_Tim_5_Water','Peak_Tim_10','Peak_Tim_20','Peak_Tim_50','Peak_Tim_10_Water','Peak_Tim_20_Water','Peak_Tim_50_Water'])
-    # import pdb; pdb.set_trace()
-    ax = df.plot.bar(figsize=(10, 7), legend=True, fontsize=10, color = ('blue','red'))
+ax = df.plot.bar(figsize=(10, 7), legend=True, fontsize=10, color = ('blue','red'))
     plt.margins(0.2)
     plt.subplots_adjust(bottom=0.2)
     plt.title('Wilcoxon Significant Differences')
@@ -134,8 +138,9 @@ def tabulate_wilcox():
     L=plt.legend()
     L.get_texts()[0].set_text('Positive change')
     L.get_texts()[1].set_text('Negative change')
-    # plt.show()
     df.to_csv('data/wilcoxon_summary.csv')
+    fig=ax.get_figure()
+    fig.savefig('data/wilcoxon_summary.png')
     return summary_dict
 
 def define_objects(files):
@@ -148,4 +153,4 @@ def define_objects(files):
 
 files = glob.glob('data/ffc_metrics/*')
 result = define_objects(files)
-# summary_dict = tabulate_wilcox()
+summary_dict = tabulate_wilcox()
