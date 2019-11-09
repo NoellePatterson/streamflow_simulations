@@ -7,6 +7,8 @@ from scipy.stats import ranksums
 import matplotlib.pyplot as plt
 import seaborn as sns
 from reference import matched_gages
+from Utils.calc_tabulate_wilcox import calc_tabulate_wilcox
+from Utils.calc_metric_map import calc_metric_map
 
 class Gage:
     '''
@@ -15,16 +17,21 @@ class Gage:
     # Initializer / Instance Attributes
 
     def __init__(self, name, metrics_file):
-        self.name = name
+        self.name = name[:-19]
         # placeholder until I map out class references
         self.hyd_class = 2
         self.metrics_file = metrics_file
+        self.summary_dict = None
         self.hist_vals = None
         self.fut_vals = None
+        self.metrics_maps = None
+        self.lat = None
+        self.lon = None
         
     def wilcox_vals(self, metrics_file):
-        if self.name not in matched_gages:
-            return
+        # Uncomment line below to limit analysis to only select gages
+        # if self.name not in matched_gages:
+        #     return
         gage = []
         hyd_class = []
         metric = []
@@ -33,12 +40,19 @@ class Gage:
         wilcoxon_stat = []
         p_val = []
 
+        loc_data = pd.read_csv('data/simulation_output/site_info.csv')
+        for index, name in enumerate(loc_data['name']):
+            if name == self.name:
+                self.lat = loc_data['lat'][index]
+                self.lon = loc_data['lon'][index]
+                break
+
         wd = os.getcwd()
         try:
             os.mkdir(wd+'/data/vioplot/{}'.format(self.name))
             os.mkdir(wd+'/data/vioplot/{}/viodata'.format(self.name))
         except:
-            print('folder already exists')
+            pass
         for row in metrics_file.index:
             gage.append(self.name)
             hyd_class.append(self.hyd_class)
@@ -84,64 +98,19 @@ class Gage:
             p_val.append(p_value)
             cols = ['Gage','Class','Metric', 'Hist_mean', 'Fut_mean', 'Wilcoxon_stat','p-val']
             df = pd.DataFrame(list(zip(gage, hyd_class, metric, hist_mean, fut_mean, wilcoxon_stat, p_val)),columns = cols)
-            if self.name in matched_gages:
-                df.to_csv(wd+'/data/stat_analysis_2/{}.csv'.format(self.name), index=None)
+            # if self.name in matched_gages: # uncomment if limiting analysis to specific gages
+            df.to_csv(wd+'/data/stat_analysis_2/{}.csv'.format(self.name), index=None)
             self.wilcox = df
-
-    def violins(self):
-        '''
-        Plot violin plots of historic and future values
-        '''
-        # organize both lists into single long format
-        hist_df = pd.DataFrame(self.hist_vals)
-        plot_data  = pd.DataFrame({'hist':pd.Series(self.hist_vals), 'fut':pd.Series(self.fut_vals)})
-        melt = pd.melt(plot_data)
-
-        ax = plt.subplot()
-        import pdb; pdb.set_trace()
-        ax = sns.violinplot(melt, showmedians=True)
-        import pdb; pdb.set_trace()
-        ax = sns.violinplot(self.hist_vals, showmedians=True)
-        ax = sns.violinplot(self.fut_vals, showmedians=True)
-        plt.show()
-        # still struggling... can't figure out how to plot both items independently, different lengths creating issues. May fall back on R violin plot code. 
-        
-
-def tabulate_wilcox():
-    summary_dict = {}
-    wilcox_files = glob.glob('data/stat_analysis_2/*')
-    # loop through each gage file
-    for index, file in enumerate(wilcox_files):
-        wilcox = pd.read_csv(file, sep=',', index_col = None)
-        # Create empty lists (pos and neg categories) to fill up for each metric in file, only do this once
-        if index == 0:
-            for i, metric in enumerate(wilcox['Metric']):
-                summary_dict[metric] = {}
-                summary_dict[metric]['pos'] = []
-                summary_dict[metric]['neg'] = []
-        for i, metric in enumerate(wilcox['Metric']):
-            if wilcox['p-val'][i] < 0.05 and wilcox['Wilcoxon_stat'][i] > 0:
-                summary_dict[metric]['pos'].append(1)
-            elif wilcox['p-val'][i] < 0.05 and wilcox['Wilcoxon_stat'][i] < 0:
-                summary_dict[metric]['neg'].append(1)
-
-    df = pd.DataFrame.from_dict(summary_dict, orient='index')
-    for i, metric in enumerate(wilcox['Metric']):
-        df['pos'][metric] = sum(df['pos'][metric])/float(13)*100
-        df['neg'][metric] = sum(df['neg'][metric])/float(13)*100
-
-ax = df.plot.bar(figsize=(10, 7), legend=True, fontsize=10, color = ('blue','red'))
-    plt.margins(0.2)
-    plt.subplots_adjust(bottom=0.2)
-    plt.title('Wilcoxon Significant Differences')
-    plt.ylabel('Percent significance of matching sites')
-    L=plt.legend()
-    L.get_texts()[0].set_text('Positive change')
-    L.get_texts()[1].set_text('Negative change')
-    df.to_csv('data/wilcoxon_summary.csv')
-    fig=ax.get_figure()
-    fig.savefig('data/wilcoxon_summary.png')
-    return summary_dict
+    
+    def tabulate_wilcox(self,):
+        map_df = pd.DataFrame(columns=['name','lat','lon','Avg','Std','CV','Spring timing','Spring mag','Spring duration','Spring rate change','Dry season timing','Dry season mag 90p','Dry season mag 50p','Dry season duration','Fall pulse timing','Fall pulse mag','Wet season timing','Fall pulse duration','Wet season mag 10p','Wet season mag 50p','Wet season duration','Peak duration 10','Peak duration 20','Peak duration 50','Peak mag 10','Peak mag 20','Peak mag 50','Peak frequency 10','Peak frequency 20','Peak frequency 50'])
+        summary_dict, metrics_mapping = calc_tabulate_wilcox()
+        self.summary_dict = summary_dict
+        self.metrics_maps = metrics_mapping
+        vals = metrics_mapping[self.name]
+        map_df = map_df.append({'name':self.name,'lat':self.lat, 'lon':self.lon,'Avg':vals[0],'Std':vals[1],'CV':vals[2],'Spring timing':vals[3],'Spring mag':vals[4],'Spring duration':vals[5],'Spring rate change':vals[6],'Dry season timing':vals[7],'Dry season mag 90p':vals[8],'Dry season mag 50p':vals[9],'Dry season duration':vals[10],'Fall pulse timing':vals[11],'Fall pulse mag':vals[12],'Wet season timing':vals[13],'Fall pulse duration':vals[14],'Wet season mag 10p':vals[15],'Wet season mag 50p':vals[16],'Wet season duration':vals[17],'Peak duration 10':vals[18],'Peak duration 20':vals[19],'Peak duration 50':vals[20],'Peak mag 10':vals[21],'Peak mag 20':vals[22],'Peak mag 50':vals[23],'Peak frequency 10':vals[24],'Peak frequency 20':vals[25],'Peak frequency 50':vals[26]},ignore_index=True)
+        wd = os.getcwd()
+        map_df.to_csv(wd+'/data/wilcoxon/indiv_results/{}.csv'.format(self.name), index=None)
 
 def define_objects(files):
     for index, file in enumerate(files):
@@ -149,8 +118,11 @@ def define_objects(files):
         name = file.split('/')[2][:-4]
         current_gage = Gage(name, metrics_file)
         current_gage.wilcox_vals(metrics_file)
-        # current_gage.violins()
+        current_gage.tabulate_wilcox()
+        
+        # current_gage.metrics_map()
 
 files = glob.glob('data/ffc_metrics/*')
 result = define_objects(files)
-summary_dict = tabulate_wilcox()
+# summary_dict = tabulate_wilcox()
+

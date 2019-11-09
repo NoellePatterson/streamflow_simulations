@@ -2,8 +2,7 @@ library(reshape2)
 library(vioplot)
 library(ggplot2)
 
-workingDir <- "/Users/noellepatterson/apps/Process_flow_projections/"
-setwd(workingDir)
+workingDir <- "/Users/noellepatterson/apps/Other/Process_flow_projections/"
 
 files = Sys.glob("data/vioplot/*/viodata/*.csv")
 for (file in files) {
