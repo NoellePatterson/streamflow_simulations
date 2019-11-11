@@ -9,6 +9,7 @@ import seaborn as sns
 from reference import matched_gages
 from Utils.calc_tabulate_wilcox import calc_tabulate_wilcox
 from Utils.calc_metric_map import calc_metric_map
+from Utils.calc_pdf import calc_pdf
 
 class Gage:
     '''
@@ -22,6 +23,8 @@ class Gage:
         self.hyd_class = 2
         self.metrics_file = metrics_file
         self.summary_dict = None
+        self.hist_flow = None
+        self.fut_flow = None
         self.hist_vals = None
         self.fut_vals = None
         self.metrics_maps = None
@@ -102,7 +105,7 @@ class Gage:
             df.to_csv(wd+'/data/stat_analysis_2/{}.csv'.format(self.name), index=None)
             self.wilcox = df
     
-    def tabulate_wilcox(self,):
+    def tabulate_wilcox(self):
         map_df = pd.DataFrame(columns=['name','lat','lon','Avg','Std','CV','Spring timing','Spring mag','Spring duration','Spring rate change','Dry season timing','Dry season mag 90p','Dry season mag 50p','Dry season duration','Fall pulse timing','Fall pulse mag','Wet season timing','Fall pulse duration','Wet season mag 10p','Wet season mag 50p','Wet season duration','Peak duration 10','Peak duration 20','Peak duration 50','Peak mag 10','Peak mag 20','Peak mag 50','Peak frequency 10','Peak frequency 20','Peak frequency 50'])
         summary_dict, metrics_mapping = calc_tabulate_wilcox()
         self.summary_dict = summary_dict
@@ -112,17 +115,25 @@ class Gage:
         wd = os.getcwd()
         map_df.to_csv(wd+'/data/wilcoxon/indiv_results/{}.csv'.format(self.name), index=None)
 
-def define_objects(files):
-    for index, file in enumerate(files):
+    def pdf(self,flow_file):
+        hist_flow, fut_flow = calc_pdf(self.name,flow_file)
+        self.hist_flow = hist_flow
+        self.fut_flow = fut_flow
+
+def define_objects(metric_files,flow_files):
+    for index, file in enumerate(metric_files):
         metrics_file = pd.read_csv(file, sep=',', index_col = None)
-        name = file.split('/')[2][:-4]
-        current_gage = Gage(name, metrics_file)
-        current_gage.wilcox_vals(metrics_file)
-        current_gage.tabulate_wilcox()
-        
-        # current_gage.metrics_map()
+        metrics_name = file.split('/')[2][:-4]
+        current_gage = Gage(metrics_name, metrics_file)
+        # current_gage.wilcox_vals(metrics_file)
+        # current_gage.tabulate_wilcox()
+        for index, f_file in enumerate(flow_files):
+            flow_file = pd.read_csv(f_file, sep=',', index_col = None)
+            flow_name = f_file[27:-4]
+            if flow_name == metrics_name[:-19]:
+                current_gage.pdf(flow_file)
 
-files = glob.glob('data/ffc_metrics/*')
-result = define_objects(files)
+metric_files = glob.glob('data/ffc_metrics/*')
+flow_files = glob.glob('data/simulation_output_cms/*')
+result = define_objects(metric_files,flow_files)
 # summary_dict = tabulate_wilcox()
-

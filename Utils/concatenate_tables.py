@@ -13,4 +13,5 @@ for index, file in enumerate(input_files):
         final_df = df
     else:
         final_df = pd.concat([final_df,df],ignore_index = True)
-# import pdb; pdb.set_trace()
+final_df.to_csv(wd+'/data/wilcoxon/wilcoxon_all.csv',index=None)
+import pdb; pdb.set_trace()

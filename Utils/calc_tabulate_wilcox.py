@@ -57,5 +57,6 @@ def calc_tabulate_wilcox():
     df.to_csv('data/wilcoxon_summary.csv')
     fig=ax.get_figure()
     fig.savefig('data/wilcoxon_summary.png')
+    plt.close()
 
     return summary_dict, metrics_mapping
