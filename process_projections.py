@@ -11,6 +11,7 @@ import numpy as np
 import csv
 from collections import OrderedDict
 import itertools
+import re
 
 def get_date_col(file):
     dates = []
@@ -79,14 +80,17 @@ def create_plotters(files):
 		dates.append(date)
 	# Set beginning and end of plotting periods
 	for index, date in enumerate(dates):
-		if date == '12/31/2005':
+		if date == '12/31/2015':
 			hist_end = index
 			continue
-		if date == '01/01/2020':
+		if date == '01/01/2035':
 			fut_beg = index
 			continue
 	dates_hist = dates[0:hist_end]
 	dates_fut = dates[fut_beg:len(dates)-1]
+
+	hist_flow_agg = [np.nan] * len(dates_hist)
+	fut_flow_agg = [np.nan] * len(dates_fut)
 		
 	num_sites = len(np.unique(df['outlet_name']))
 	for index in range(num_sites): # iterate over all 59 sites
@@ -96,24 +100,62 @@ def create_plotters(files):
 		flow_hist = flow_cfs[0:hist_end]
 		flow_fut = flow_cfs[fut_beg:len(flow_cfs)+1]
 		plot_outputs = OrderedDict()
+		new_name = re.sub('\D', '', name)
 		plot_outputs['result_dt_hist'] = dates_hist
-		plot_outputs[name+'_hist'] = flow_hist
+		plot_outputs[new_name+'1'] = flow_hist
 		plot_outputs['result_dt_fut'] = dates_fut
-		plot_outputs[name+'_fut'] = flow_fut
+		plot_outputs[new_name+'2'] = flow_fut
+
+		# add values to aggregate lists
+		for i, val in enumerate(flow_hist):
+			if index == 0:
+				hist_flow_agg[i] = [val]
+			else:
+				hist_flow_agg[i].append(val)
+		for i, val in enumerate(flow_fut):
+			if index == 0:
+				fut_flow_agg[i] = [val]
+			else:
+				fut_flow_agg[i].append(val)
 
 		# write results to csv format
+		class_row = ['',10,'',11]
 		csv_columns = plot_outputs.keys()
 		csv_file = 'data/plotter/'+ name +'.csv'
 		keys = plot_outputs.keys()
+		# import pdb; pdb.set_trace()
 		try:
 			with open(csv_file, 'w') as csvfile:
 				writer = csv.writer(csvfile)
+				writer.writerow(class_row)
 				writer.writerow(keys)
-				writer.writerows(itertools.zip_longest(*[plot_outputs[key] for key in keys]))
+				writer.writerows(itertools.izip_longest(*[plot_outputs[key] for key in keys]))
 		except IOError:
 			print("I/O error") 
-        
+
+	# print aggregate lists
+	agg_outputs = OrderedDict()
+	for index, value in enumerate(hist_flow_agg):
+		hist_flow_agg[index] = np.nanmean(value)
+	for index, value in enumerate(fut_flow_agg):
+		fut_flow_agg[index] = np.nanmean(value)
+	agg_outputs['result_dt_hist'] = dates_hist
+	agg_outputs['agg_flow_hist'] = hist_flow_agg
+	agg_outputs['result_dt_fut'] = dates_fut
+	agg_outputs['agg_flow_fut'] = fut_flow_agg
+
+	csv_file = 'data/plotter/aggregate.csv'
+	keys = agg_outputs.keys()
+	try:
+		with open(csv_file, 'w') as csvfile:
+			writer = csv.writer(csvfile)
+			writer.writerow(['',2,'',2])
+			writer.writerow(keys)
+			writer.writerows(itertools.izip_longest(*[agg_outputs[key] for key in keys]))
+	except IOError:
+		print("I/O error") 
+
 files = glob.glob('data/simulations/*')
 # create_plotters(files)
 # site = get_site_info(files)
-csv = create_csvs(files)
+# csv = create_csvs(files)

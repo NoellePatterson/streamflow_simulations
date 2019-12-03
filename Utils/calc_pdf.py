@@ -53,11 +53,11 @@ def calc_pdf(name,flow_file):
     ex_prob_fut = []
     n = len(fut_flow)
     sorted_fut_flow = np.sort(fut_flow)
+    
     for index, value in enumerate(np.sort(fut_flow)):
         ex_prob_fut.append((n-index+1)/float(n+1))
     idx_fut = (np.abs(sorted_fut_flow-exceedance_flow)).argmin() # get index of exceedance flow from future data
     future_exceedance_prob = ex_prob_fut[idx_fut]
-
     # ax2.set_xscale('log')
     ymin, ymax = ax2.get_ylim()
     ax2.vlines(exceedance_flow,ymin=0,ymax=ymax,color='red')

@@ -56,19 +56,19 @@ class Gage:
             os.mkdir(wd+'/data/vioplot/{}/viodata'.format(self.name))
         except:
             pass
+            
         for row in metrics_file.index:
             gage.append(self.name)
             hyd_class.append(self.hyd_class)
             vals = metrics_file.iloc[row]
-            # historic range is from index #1 to index # 56 (1950-2005)
-            # future range is from index #71 to index # 151 (2020-2099)
+            # historic range is from index 1:66 (1950-2015)
+            # future range is from index 86:151 (2035-2099)
             metric_name = metrics_file.iloc[row][0]            
             drop_metrics =['SP_Tim','DS_Tim','DS_Dur_WSI','DS_No_Flow','FA_Tim','Wet_Tim','Peak_Tim_2_Water','Peak_Tim_5_Water','Peak_Tim_10','Peak_Tim_20','Peak_Tim_50','Peak_Tim_10_Water','Peak_Tim_20_Water','Peak_Tim_50_Water']
             if metric_name in drop_metrics:
                 continue
-
             metric.append(vals[0])
-            hist_vals = vals.iloc[1:57]
+            hist_vals = vals.iloc[1:66]
             hist_vals = hist_vals.to_numpy()
             for index, val in enumerate(hist_vals):
                 try:
@@ -78,8 +78,13 @@ class Gage:
             hist_vals = hist_vals.astype(dtype=np.float64)
             hist_vals = np.array(hist_vals, dtype=np.float)
             hist_mean.append(np.nanmean(hist_vals))
+            # import pdb; pdb.set_trace()
+            if metric_name == 'SP_Tim_Water':
+                sp_tim = pd.DataFrame(hist_vals)
+                sp_tim = sp_tim.drop([0],axis=0)
+                sp_tim.to_csv('data/ffc_metrics/sp_tim/{}.csv'.format(self.name), index=None, header=False)
             
-            fut_vals = vals.iloc[71:151]
+            fut_vals = vals.iloc[86:151]
             fut_vals = fut_vals.to_numpy()
             for index, val in enumerate(fut_vals):
                 try:
@@ -104,6 +109,7 @@ class Gage:
             # if self.name in matched_gages: # uncomment if limiting analysis to specific gages
             df.to_csv(wd+'/data/stat_analysis_2/{}.csv'.format(self.name), index=None)
             self.wilcox = df
+        # import pdb; pdb.set_trace()
     
     def tabulate_wilcox(self):
         map_df = pd.DataFrame(columns=['name','lat','lon','Avg','Std','CV','Spring timing','Spring mag','Spring duration','Spring rate change','Dry season timing','Dry season mag 90p','Dry season mag 50p','Dry season duration','Fall pulse timing','Fall pulse mag','Wet season timing','Fall pulse duration','Wet season mag 10p','Wet season mag 50p','Wet season duration','Peak duration 10','Peak duration 20','Peak duration 50','Peak mag 10','Peak mag 20','Peak mag 50','Peak frequency 10','Peak frequency 20','Peak frequency 50'])
@@ -125,15 +131,15 @@ def define_objects(metric_files,flow_files):
         metrics_file = pd.read_csv(file, sep=',', index_col = None)
         metrics_name = file.split('/')[2][:-4]
         current_gage = Gage(metrics_name, metrics_file)
-        # current_gage.wilcox_vals(metrics_file)
+        current_gage.wilcox_vals(metrics_file)
         # current_gage.tabulate_wilcox()
         for index, f_file in enumerate(flow_files):
             flow_file = pd.read_csv(f_file, sep=',', index_col = None)
             flow_name = f_file[27:-4]
-            if flow_name == metrics_name[:-19]:
-                current_gage.pdf(flow_file)
+            # if flow_name == metrics_name[:-19]:
+            #     current_gage.pdf(flow_file)
 
-metric_files = glob.glob('data/ffc_metrics/*')
+metric_files = glob.glob('data/ffc_metrics/*.csv')
 flow_files = glob.glob('data/simulation_output_cms/*')
 result = define_objects(metric_files,flow_files)
 # summary_dict = tabulate_wilcox()
