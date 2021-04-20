@@ -78,11 +78,6 @@ class Gage:
             hist_vals = hist_vals.astype(dtype=np.float64)
             hist_vals = np.array(hist_vals, dtype=np.float)
             hist_mean.append(np.nanmean(hist_vals))
-            # import pdb; pdb.set_trace()
-            if metric_name == 'SP_Tim_Water':
-                sp_tim = pd.DataFrame(hist_vals)
-                sp_tim = sp_tim.drop([0],axis=0)
-                sp_tim.to_csv('data/ffc_metrics/sp_tim/{}.csv'.format(self.name), index=None, header=False)
             
             fut_vals = vals.iloc[86:151]
             fut_vals = fut_vals.to_numpy()
@@ -94,6 +89,20 @@ class Gage:
             fut_vals = fut_vals.astype(dtype=np.float64)
             fut_vals = np.array(fut_vals, dtype=np.float)
             fut_mean.append(np.nanmean(fut_vals))
+
+            if metric_name == 'SP_Tim_Water':
+                sp_tim = pd.DataFrame(fut_vals)
+                sp_tim = sp_tim.drop([0],axis=0)
+                sp_tim.to_csv('data/ffc_metrics/sp_tim/{}.csv'.format(self.name), index=None, header=False)
+            if metric_name == 'DS_Tim_Water':
+                dry_tim = pd.DataFrame(fut_vals)
+                dry_tim = dry_tim.drop([0],axis=0)
+                dry_tim.to_csv('data/ffc_metrics/dry_tim/{}.csv'.format(self.name), index=None, header=False)
+            if metric_name == 'Wet_Tim_Water':
+                wet_tim = pd.DataFrame(fut_vals)
+                wet_tim = wet_tim.drop([0],axis=0)
+                wet_tim.to_csv('data/ffc_metrics/wet_tim/{}.csv'.format(self.name), index=None, header=False)
+
             self.hist_vals = hist_vals
             self.fut_vals = fut_vals
 

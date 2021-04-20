@@ -12,6 +12,7 @@ import csv
 from collections import OrderedDict
 import itertools
 import re
+import os
 
 def get_date_col(file):
     dates = []
@@ -26,24 +27,41 @@ def get_date_col(file):
     return dates
 
 def create_csvs(files):
-	file = files[0] # for now just use the first file, which is one of the many modelling/routing scenarios
-	dates = get_date_col(file)
-	dct = {}
-	dataset = xr.open_dataset(file)
-	df = dataset.to_dataframe()
-	sites = np.unique(df['outlet_name'])
-	for index, site in enumerate(sites):	
-		flow = df['streamflow'][0][index]
-		flow_cfs = (flow * 35.314666212661).tolist()
-		flow = flow.tolist()
-		dct = {'date':dates, 'flow':flow_cfs[0:-1]} # remove weird final val from flows col
-		flow_output = pd.DataFrame(data = dct) 
-		name = df['outlet_name'][0][index].iloc[0].decode('ASCII')
-		flow_output.to_csv('data/simulation_output/' + name + '.csv', sep=',', index=False)
-		# csm flow output
-		dct_cms = {'date':dates, 'flow':flow[0:-1]} # remove weird final val from flows col
-		flow_output_cms = pd.DataFrame(data = dct_cms) 
-		flow_output_cms.to_csv('data/simulation_output_cms/' + name + '.csv', sep=',', index=False)
+	sierras = pd.read_csv('data/scripps_west_sierras.csv')
+	sierras_sites = sierras['name']
+	for file in files: 
+		dates = get_date_col(file)
+		model_name = file.split('/')[2].split('.')[0]
+		if not os.path.exists('data/simulation_output/'+ model_name):
+			os.mkdir('data/simulation_output/'+ model_name)
+		if not os.path.exists('data/simulation_output_cms/'+ model_name):
+			os.mkdir('data/simulation_output_cms/'+ model_name)
+		dct = {}
+		dataset = xr.open_dataset(file)
+		df = dataset.to_dataframe()
+		if model_name == 'CESM1-BGC_rcp85':
+			cesm85_test = df
+		elif model_name == 'CESM1-BGC_rcp45':
+			import pdb; pdb.set_trace()
+		# sites = np.unique(df['outlet_name'])
+		for index, site in enumerate(sierras_sites):
+			for i in range(59):
+				if df['outlet_name'][0][i].iloc[0] == site: 
+					site_index = i
+					break
+			flow = df['streamflow'][0][site_index]
+			flow_cfs = (flow * 35.314666212661).tolist()
+			flow = flow.tolist()
+			dct = {'date':dates, 'flow':flow_cfs[0:-1]} # remove weird final val from flows col
+			if len(dates) != len(flow_cfs[0:-1]):
+				import pdb; pdb.set_trace()
+			flow_output = pd.DataFrame(data = dct) 
+			name = df['outlet_name'][0][site_index].iloc[0].decode('ASCII')
+			flow_output.to_csv('data/simulation_output/'+ model_name+ '/'+name+ '.csv', sep=',', index=False)
+			# csm flow output
+			dct_cms = {'date':dates, 'flow':flow[0:-1]} # remove weird final val from flows col
+			flow_output_cms = pd.DataFrame(data = dct_cms) 
+			flow_output_cms.to_csv('data/simulation_output_cms/'+ model_name + '/'+name+ '.csv', sep=',', index=False)
 
 def get_site_info(files):
 	file = files[0] # for now just use the first file, which is one of the many modelling/routing scenarios
@@ -51,7 +69,6 @@ def get_site_info(files):
 	dataset = xr.open_dataset(file)
 	df = dataset.to_dataframe()
 	sites = np.unique(df['outlet_name'])
-	import pdb; pdb.set_trace()
 	for index in range(len(sites)):
 		# site_info_dt[site.decode('ASCII')] = df[loc]
 		name = df['outlet_name'][0][index].iloc[0].decode('ASCII')
@@ -64,7 +81,7 @@ def get_site_info(files):
 	[dict(zip(site_info_dct, col)) for col in zip(*site_info_dct.values())]
 	site_info_df = pd.DataFrame.from_dict(site_info_dct)
 
-	site_info_df.to_csv('data/simulation_output/site_info.csv', sep=',', index=False)
+	site_info_df.to_csv('data/site_info.csv', sep=',', index=False)
 
 def create_plotters(files):
 	# create csv outputs of specific years to feed into dim hydro plotter
@@ -158,4 +175,4 @@ def create_plotters(files):
 files = glob.glob('data/simulations/*')
 # create_plotters(files)
 # site = get_site_info(files)
-# csv = create_csvs(files)
+csv = create_csvs(files)
